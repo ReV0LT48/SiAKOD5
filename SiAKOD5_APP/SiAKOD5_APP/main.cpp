@@ -129,7 +129,7 @@ private:
 	unsigned type;
 
 public:
-	Task(std::string name = "", unsigned time = 10000, unsigned type = 0)
+	Task(std::string name = "", unsigned time = 0, unsigned type = 0)
 	{
 		this->name = name;
 		this->time = time;
@@ -171,12 +171,16 @@ public:
 		if (this->check_task())
 		{
 			processed_task.countdown();
-			if (processed_task.isFinished()) std::cout << "\nПроцесс обработки задачи \"" << processed_task.get_name() << "\" завершен.";
+			if (processed_task.isFinished())
+			{
+				std::cout << "Процесс обработки задачи \"" << processed_task.get_name() << "\" завершен.\n";
+				this->delete_task();
+			}
 		}
 	}
 	void show_task_status()
 	{
-		if (processed_task.get_time() > 5) std::cout << " пусто\n";
+		if (processed_task.get_time() > 5 || processed_task.get_time() == 0) std::cout << " пусто\n";
 		else processed_task.output_status();
 	}
 };
@@ -210,7 +214,7 @@ int main()
 	pArr[1] = P2;
 	pArr[2] = P3;
 	Distributor R;
-	bool R_tumblr = true;
+	bool R_tumblr;
 	Queue<Task> F;
 	Stack<Task> S;
 	unsigned dec_time = 0;
@@ -220,29 +224,30 @@ int main()
 	cin >> ask;
 	while (cin.get() != '\n') continue;
 	cout << endl;
-	while (ask != 'q')
+	while (ask != 'q' || !pArr[0].isEmpty() || !pArr[1].isEmpty() || !pArr[2].isEmpty() || !S.isEmpty() || !F.isEmpty())
 	{
+		R_tumblr = true;
 		dec_time++;
 		Task new_task;
 		if (ask != 'q') new_task.generate(); //Генерируем задачу
-		cout << "Тип задачи - (" << new_task.get_type() << ") " << new_task.get_time() << "\n";
+		cout << "Тип задачи - (" << new_task.get_type() << ") Время выполнения - (" << new_task.get_time() << ")\n";
 		F.push(new_task); //Ставим задачу в очередь
-		if (!S.isEmpty() && pArr[((S.check_top()).get_type()) - 1].isEmpty()) //Проверяем, освободился ли процессор для обработки верхнего элемента стека
+		if (!S.isEmpty() && pArr[(S.check_top()).get_type() - 1].isEmpty()) //Проверяем, освободился ли процессор для обработки верхнего элемента стека
 		{
 			R.push(S.pop());
-			pArr[((S.check_top()).get_type()) - 1].push(R.get_task());
+			pArr[(S.check_top()).get_type() - 1].push(R.get_task());
 			R.clear();
 		}
 		while (!F.isEmpty() && R_tumblr)
 		{
 			R.push(F.pop()); //Передаем задачу из очереди в распределитель
-			if (pArr[((R.get_task()).get_type()) - 1].isEmpty()) //Если нужный процессор свободен - ставим задачу на обработку
+			if (pArr[(R.get_task()).get_type() - 1].isEmpty()) //Если нужный процессор свободен - ставим задачу на обработку
 			{
-				pArr[((R.get_task()).get_type()) - 1].push(R.get_task());
+				pArr[(R.get_task()).get_type() - 1].push(R.get_task());
 				R.clear();
 				R_tumblr = false;
 			}
-			else //Если занят - кладем задачу в стек и извлекаем из очереди следующую (если она есть)
+			else //Если занят - кладем задачу в стек и извлекаем из очереди следующую (если она есть), но перед этим проверяем процессор для вершины стека
 			{
 				S.push(R.get_task());
 				R.clear();
@@ -250,23 +255,18 @@ int main()
 			}
 		}
 
-		for (int i = 0; i < 3; i++) //Обработка задачи в процессоре
-		{
-			if (!pArr[i].isEmpty())
-			{
-				if (pArr[i].check_task()) pArr[i].task_processing();
-				else pArr[i].delete_task();
-			}
-		}
 
 		cout << "\nСтатус работы программы на времени <" << dec_time << ">.\n\n";
+
+		for (int i = 0; i < 3; i++) //Обработка задачи в процессоре
+		{
+			if (!pArr[i].isEmpty()) pArr[i].task_processing();
+
+		}
 		for (int i = 0; i < 3; i++)
 		{
-			if (!pArr[i].isEmpty())
-			{
-				cout << "P" << i + 1 << " ----- ";
-				pArr[i].show_task_status();
-			}
+			cout << "P" << i + 1 << " ----- ";
+			pArr[i].show_task_status();
 		}
 		if (!S.isEmpty())
 		{
@@ -281,9 +281,10 @@ int main()
 		}
 		else cout << "F ---- пусто\n";
 
-		cout << "\nНажмите любую клавишу, чтобы сгенерировать задачу (q - выход): ";
+		cout << "\n\nНажмите любую клавишу, чтобы сгенерировать задачу (q - выход): ";
 		cin >> ask;
 		while (cin.get() != '\n') continue;
+		cout << endl;
 	}
 	return 0;
 }
