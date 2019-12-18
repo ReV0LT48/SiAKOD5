@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <ctime>
 
 //////////////////////Односвязный линейный список
 template<typename T>
@@ -26,9 +27,11 @@ public:
 	~SLLList();
 	T pop_front();
 	T pop_back();
+	T check() { return head->data; }
 	void push_front(T data);
 	void push_back(T data);
 	int get_size() { return size; }
+	void clear() { while (size) pop_front(); }
 };
 
 template<typename T>
@@ -87,39 +90,6 @@ void SLLList<T>::push_back(T data)
 }
 
 
-//////////////////////Задача
-class Task
-{
-private:
-	std::string name;
-	unsigned time;
-	unsigned priority;
-
-public:
-	Task()
-	{
-		name = "";
-		time = 0;
-		priority = 1000;
-	}
-	Task(std::string name, int time, int priority)
-	{
-		this->name = name;
-		this->time = time;
-		this->priority = priority;
-	}
-	std::string get_name() { return name; }
-	unsigned get_time() { return time; }
-	int get_priority() { return priority; }
-	void countdown() { --time; }
-	bool isFinished() { return time == 0; }
-	void output_status()
-	{
-		std::cout << "Имя задачи: " << name << " ; время выполнения: " << time << ".\n";
-	}
-};
-
-
 //////////////////////Стек
 template<typename T>
 class Stack
@@ -129,8 +99,9 @@ private:
 
 public:
 	void push(T data) { block.push_front(data); }
-	T pop() { return block.pop_back(); }
+	T pop() { return block.pop_front(); }
 	bool isEmpty() { return block.get_size() == 0; }
+	T check_top() { return block.check(); }
 };
 
 
@@ -145,16 +116,174 @@ public:
 	void push(T data) { block.push_back(data); }
 	T pop() { return block.pop_front(); }
 	bool isEmpty() { return block.get_size() == 0; }
+	T check_top() { return block.check(); }
+};
+
+
+//////////////////////Задача
+class Task
+{
+private:
+	std::string name;
+	unsigned time;
+	unsigned type;
+
+public:
+	Task(std::string name = "", unsigned time = 10000, unsigned type = 0)
+	{
+		this->name = name;
+		this->time = time;
+		this->type = type;
+	}
+	void generate()
+	{
+		std::cout << "Введите имя задачи -> ";
+		std::getline(std::cin, name);
+		time = (rand() % 4) + 1;
+		type = (rand() % 3) + 1;
+	}
+	std::string get_name() { return name; }
+	unsigned get_time() { return time; }
+	unsigned get_type() { return type; }
+	void countdown() { --time; }
+	bool isFinished() { return time == 0; }
+	void output_status()
+	{
+		std::cout << "Имя задачи: " << name << " ; время: " << time << ".\n";
+	}
 };
 
 
 //////////////////////Процессор
+class Processor
+{
+private:
+	Task processed_task;
+
+public:
+	Processor() { processed_task = Task(); }
+	void push(Task task) { processed_task = task; }
+	void delete_task() { processed_task = Task(); }
+	bool check_task() { return processed_task.get_time() > 0; }
+	bool isEmpty() { return processed_task.isFinished(); }
+	void task_processing()
+	{
+		if (this->check_task())
+		{
+			processed_task.countdown();
+			if (processed_task.isFinished()) std::cout << "\nПроцесс обработки задачи \"" << processed_task.get_name() << "\" завершен.";
+		}
+	}
+	void show_task_status()
+	{
+		if (processed_task.get_time() > 5) std::cout << " пусто\n";
+		else processed_task.output_status();
+	}
+};
+
+
+//////////////////////Распределитель
+class Distributor
+{
+private:
+	Task received_task;
+
+public:
+	Distributor() { received_task = Task(); }
+	void push(Task task) { received_task = task; }
+	void clear() { received_task = Task(); }
+	Task get_task() { return received_task; }
+};
 
 
 
 int main()
 {
+	using namespace std;
 	setlocale(0, "");
+	srand(time(NULL));
+	Processor P1;
+	Processor P2;
+	Processor P3;
+	Processor pArr[3];
+	pArr[0] = P1;
+	pArr[1] = P2;
+	pArr[2] = P3;
+	Distributor R;
+	bool R_tumblr = true;
+	Queue<Task> F;
+	Stack<Task> S;
+	unsigned dec_time = 0;
+	cout << "ПРОГРАММА МОДЕЛИРОВАНИЯ ОБРАБОТКИ ЗАДАЧ\n\n";
+	cout << "Нажмите любую клавишу, чтобы сгенерировать задачу (q - выход): ";
+	char ask;
+	cin >> ask;
+	while (cin.get() != '\n') continue;
+	cout << endl;
+	while (ask != 'q')
+	{
+		dec_time++;
+		Task new_task;
+		if (ask != 'q') new_task.generate(); //Генерируем задачу
+		cout << "Тип задачи - (" << new_task.get_type() << ") " << new_task.get_time() << "\n";
+		F.push(new_task); //Ставим задачу в очередь
+		if (!S.isEmpty() && pArr[((S.check_top()).get_type()) - 1].isEmpty()) //Проверяем, освободился ли процессор для обработки верхнего элемента стека
+		{
+			R.push(S.pop());
+			pArr[((S.check_top()).get_type()) - 1].push(R.get_task());
+			R.clear();
+		}
+		while (!F.isEmpty() && R_tumblr)
+		{
+			R.push(F.pop()); //Передаем задачу из очереди в распределитель
+			if (pArr[((R.get_task()).get_type()) - 1].isEmpty()) //Если нужный процессор свободен - ставим задачу на обработку
+			{
+				pArr[((R.get_task()).get_type()) - 1].push(R.get_task());
+				R.clear();
+				R_tumblr = false;
+			}
+			else //Если занят - кладем задачу в стек и извлекаем из очереди следующую (если она есть)
+			{
+				S.push(R.get_task());
+				R.clear();
+				R_tumblr = true;
+			}
+		}
 
+		for (int i = 0; i < 3; i++) //Обработка задачи в процессоре
+		{
+			if (!pArr[i].isEmpty())
+			{
+				if (pArr[i].check_task()) pArr[i].task_processing();
+				else pArr[i].delete_task();
+			}
+		}
+
+		cout << "\nСтатус работы программы на времени <" << dec_time << ">.\n\n";
+		for (int i = 0; i < 3; i++)
+		{
+			if (!pArr[i].isEmpty())
+			{
+				cout << "P" << i + 1 << " ----- ";
+				pArr[i].show_task_status();
+			}
+		}
+		if (!S.isEmpty())
+		{
+			cout << "S ---- ";
+			(S.check_top()).output_status();
+		}
+		else cout << "S ---- пусто\n";
+		if (!F.isEmpty())
+		{
+			cout << "F ---- ";
+			(F.check_top()).output_status();
+		}
+		else cout << "F ---- пусто\n";
+
+		cout << "\nНажмите любую клавишу, чтобы сгенерировать задачу (q - выход): ";
+		cin >> ask;
+		while (cin.get() != '\n') continue;
+	}
 	return 0;
 }
